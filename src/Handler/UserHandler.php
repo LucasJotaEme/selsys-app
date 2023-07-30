@@ -20,6 +20,7 @@ class UserHandler extends GlobalManager{
         $user->setEmail($email);
         if($this->validatePassword($psw))
             $user->setPassword($passwordHasher->hashPassword($user,$psw));
+            
         return $user;
     }
 
@@ -34,6 +35,7 @@ class UserHandler extends GlobalManager{
         $id = isset($params[self::ID_PARAM]) ? $params[self::ID_PARAM] : 0;
 
         $this->repository(self::ENTITY_NAME)->remove($this->ifExistsGetUserById($id), true);
+
         return "Deleted user";
     }
 
@@ -48,6 +50,7 @@ class UserHandler extends GlobalManager{
         
         if(null === $user)
             throw new \Exception("User with id $userId not found");
+            
         return $user;
     }
 

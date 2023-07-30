@@ -8,6 +8,9 @@ use App\Request\UserCreateRequest;
 use App\Request\UserEditRequest;
 use App\Request\UserIdRequest;
 use App\Common\GlobalManager;
+use App\Handler\UploadHandler;
+use App\Handler\UserUploadHandler;
+use App\Request\UserUploadRequest;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
@@ -24,13 +27,14 @@ class UserController extends GlobalManager
         
         $user->setApiToken($token);
         $this->repository($handler::ENTITY_NAME)->save($user, true);
-        return $this->customResponse($token);
+        return $this->customResponse(array("user" => $user));
     }
 
     #[Route('/create', methods: ["POST"])]
     public function userCreate(UserHandler $handler, UserPasswordHasherInterface $passwordHasher, UserCreateRequest $automatizedValidator): JsonResponse
     {
         try{
+            $automatizedValidator->validate();
             $request  = GlobalRequest::getRequest();
             $user     = $handler->set($request, $passwordHasher);
             $response = $handler->beforeSave($user);
@@ -44,9 +48,26 @@ class UserController extends GlobalManager
     public function editCreate(UserHandler $handler, UserPasswordHasherInterface $passwordHasher, UserEditRequest $automatizedValidator): JsonResponse
     {
         try{
+            $automatizedValidator->validate();
             $request  = GlobalRequest::getRequest();
             $user     = $handler->set($request, $passwordHasher, true);
             $response = $handler->beforeSave($user);
+        }catch(\Exception $e){
+            return $this->customResponse(null, $e->getMessage());
+        }
+        return $this->customResponse($response);
+    }
+
+    #[Route('/upload', methods: ["POST"])]
+    public function userUpload(UserUploadHandler $uploadHandler, UserPasswordHasherInterface $passwordHasher, UserUploadRequest $automatizedValidator): JsonResponse
+    {
+        try{
+            $request  = GlobalRequest::getFieldsRequest(array(
+                UploadHandler::FILE_PARAM => GlobalRequest::FILE_REQUEST,
+                UserUploadHandler::ID_PARAM   => GlobalRequest::FIELD_REQUEST
+            ));
+            $user     = $uploadHandler->set($request);
+            $response = $uploadHandler->beforeSave($user);
         }catch(\Exception $e){
             return $this->customResponse(null, $e->getMessage());
         }

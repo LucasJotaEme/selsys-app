@@ -10,6 +10,9 @@ use Symfony\Component\Serializer\Serializer;
 
 class GlobalManager extends AbstractController{
 
+    // customResponse
+    const RESPONSE_STATUS_OK    = 200;
+    const RESPONSE_STATUS_ERROR = 404;
 
     public function __construct(protected EntityManagerInterface $entityManager){}
 
@@ -19,16 +22,26 @@ class GlobalManager extends AbstractController{
         );
     }
 
+    public function ifExistsGetById($id, $entityName){
+        $entity = $this->repository($entityName)->find($id);
+
+        if (null === $entity)
+            throw new \Exception("$entityName with id $id not found");
+
+        return $entity;
+    }
+
     public function generateToken(){
         return bin2hex(openssl_random_pseudo_bytes(16));
     }
 
-    public function customResponse($result, $error = null){
+    public function customResponse($result, $error = null, $status = self::RESPONSE_STATUS_OK){
         return $this->json(
             array(
                 "result" => json_decode($this->generateSerializer($result, "json")),
                 "error"  => $error
-            )
+            ),
+            null === $error ? self::RESPONSE_STATUS_OK : self::RESPONSE_STATUS_ERROR
         );
     }
 
