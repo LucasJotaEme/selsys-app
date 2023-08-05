@@ -9,7 +9,6 @@ use App\Request\UserEditRequest;
 use App\Request\UserIdRequest;
 use App\Common\GlobalManager;
 use App\Handler\UploadHandler;
-use App\Handler\UserUploadHandler;
 use App\Request\UserUploadRequest;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -24,7 +23,7 @@ class UserController extends GlobalManager
     {
         $user  = $this->getUser();
         $token = $this->generateToken();
-        
+
         $user->setApiToken($token);
         $this->repository($handler::ENTITY_NAME)->save($user, true);
         return $this->customResponse(array("user" => $user));
@@ -33,12 +32,12 @@ class UserController extends GlobalManager
     #[Route('/create', methods: ["POST"])]
     public function userCreate(UserHandler $handler, UserPasswordHasherInterface $passwordHasher, UserCreateRequest $automatizedValidator): JsonResponse
     {
-        try{
+        try {
             $automatizedValidator->validate();
             $request  = GlobalRequest::getRequest();
             $user     = $handler->set($request, $passwordHasher);
             $response = $handler->beforeSave($user);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $this->customResponse(null, $e->getMessage());
         }
         return $this->customResponse($response);
@@ -47,28 +46,28 @@ class UserController extends GlobalManager
     #[Route('/edit', methods: ["POST"])]
     public function editCreate(UserHandler $handler, UserPasswordHasherInterface $passwordHasher, UserEditRequest $automatizedValidator): JsonResponse
     {
-        try{
+        try {
             $automatizedValidator->validate();
             $request  = GlobalRequest::getRequest();
             $user     = $handler->set($request, $passwordHasher, true);
             $response = $handler->beforeSave($user);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $this->customResponse(null, $e->getMessage());
         }
         return $this->customResponse($response);
     }
 
     #[Route('/upload', methods: ["POST"])]
-    public function userUpload(UserUploadHandler $uploadHandler, UserPasswordHasherInterface $passwordHasher, UserUploadRequest $automatizedValidator): JsonResponse
+    public function userUpload(UserHandler $userHandler, UserPasswordHasherInterface $passwordHasher, UserUploadRequest $automatizedValidator): JsonResponse
     {
-        try{
+        try {
             $request  = GlobalRequest::getFieldsRequest(array(
                 UploadHandler::FILE_PARAM => GlobalRequest::FILE_REQUEST,
-                UserUploadHandler::ID_PARAM   => GlobalRequest::FIELD_REQUEST
+                UserHandler::ID_PARAM   => GlobalRequest::FIELD_REQUEST
             ));
-            $user     = $uploadHandler->set($request);
-            $response = $uploadHandler->beforeSave($user);
-        }catch(\Exception $e){
+            $user     = $userHandler->set($request, null, true);
+            $response = $userHandler->beforeSave($user);
+        } catch (\Exception $e) {
             return $this->customResponse(null, $e->getMessage());
         }
         return $this->customResponse($response);
@@ -77,10 +76,10 @@ class UserController extends GlobalManager
     #[Route("/remove", methods: ["POST"])]
     public function remove(UserHandler $handler, UserIdRequest $automatizedValidator): JsonResponse
     {
-        try{
+        try {
             $request = GlobalRequest::getRequest();
             $result  = $handler->remove($request);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $this->customResponse(null, $e->getMessage());
         }
         return $this->customResponse($result);
@@ -89,10 +88,10 @@ class UserController extends GlobalManager
     #[Route("/get", methods: ["POST"])]
     public function get(UserHandler $handler, UserIdRequest $automatizedValidator): JsonResponse
     {
-        try{
+        try {
             $request = GlobalRequest::getRequest();
             $result  = $handler->get($request);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return $this->customResponse(null, $e->getMessage());
         }
         return $this->customResponse($result);

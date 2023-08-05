@@ -22,15 +22,6 @@ class GlobalManager extends AbstractController{
         );
     }
 
-    public function ifExistsGetById($id, $entityName){
-        $entity = $this->repository($entityName)->find($id);
-
-        if (null === $entity)
-            throw new \Exception("$entityName with id $id not found");
-
-        return $entity;
-    }
-
     public function generateToken(){
         return bin2hex(openssl_random_pseudo_bytes(16));
     }

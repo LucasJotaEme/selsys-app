@@ -2,70 +2,91 @@
 
 namespace App\Handler;
 
+use App\Common\GlobalHandler;
 use App\Entity\User;
-use App\Common\GlobalManager;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-class UserHandler extends GlobalManager{
+class UserHandler extends GlobalHandler{
 
     const ENTITY_NAME = "User";
-    const ID_PARAM    = "userId";
+    const ID_PARAM = "userId";
+    const PASSWORD_PARAM = "password";
 
-    public function set($params, UserPasswordHasherInterface $passwordHasher, $edit = false){
-        $userId   = isset($params[self::ID_PARAM]) ? $params[self::ID_PARAM]  : 0;
-        $psw      = isset($params["password"])     ? $params["password"]      : null;
-        $email    = $params["email"];
+    public function __construct(protected EntityManagerInterface $entityManager, private UploadHandler $uploadHandler)
+    {
+        parent::__construct($entityManager);
+    }
 
-        $user = !$edit ? new User() : $this->ifExistsGetUserById($userId);
-        $user->setEmail($email);
-        if($this->validatePassword($psw))
-            $user->setPassword($passwordHasher->hashPassword($user,$psw));
-            
+    public function set($params, UserPasswordHasherInterface $passwordHasher = null, $edit = false){
+        $id = $params[self::ID_PARAM] ?? 0;
+        $psw = $params[self::PASSWORD_PARAM] ?? null;
+        $file = $params[UploadHandler::FILE_PARAM] ?? null;
+        $user = $edit ? $this->ifExistsGetById($id, self::ENTITY_NAME) : new User();
+
+        if($edit){
+            $this->updateUserUpload($user, $file);
+        }
+
+        if(isset($params["email"])){
+            $user->setEmail($params["email"]);
+        }
+        
+        if($this->validatePassword($psw) && null !== $passwordHasher){
+            $user->setPassword($passwordHasher->hashPassword($user,$psw));   
+        }
+
         return $user;
     }
 
     public function beforeSave(User $user){
         $this->validate($user);
-
         $this->repository(self::ENTITY_NAME)->save($user, true);
         return $user;
     }
 
     public function remove($params){
-        $id = isset($params[self::ID_PARAM]) ? $params[self::ID_PARAM] : 0;
+        $id = $params[self::ID_PARAM] ?? 0;
 
-        $this->repository(self::ENTITY_NAME)->remove($this->ifExistsGetUserById($id), true);
+        $this->repository(self::ENTITY_NAME)->remove($this->ifExistsGetById($id, self::ENTITY_NAME), true);
 
-        return "Deleted user";
+        return $this->getMessageDeleted($id, self::ENTITY_NAME);
     }
 
     public function get($params){
-        $id = isset($params[self::ID_PARAM]) ? $params[self::ID_PARAM] : 0;
+        $id = $params[self::ID_PARAM] ?? 0;
 
-        return $this->ifExistsGetUserById($id);
-    }
-
-    private function ifExistsGetUserById($userId){
-        $user = $this->repository(self::ENTITY_NAME)->find($userId);
-        
-        if(null === $user)
-            throw new \Exception("User with id $userId not found");
-            
-        return $user;
+        return $this->ifExistsGetById($id, self::ENTITY_NAME);
     }
 
     private function validate(User $user){
-        $repository               = $this->repository(self::ENTITY_NAME);
-        $existingUserWithEmail    = $repository->findOneBy(array("email" => $user->getEmail()));
+        $repository = $this->repository(self::ENTITY_NAME);
+        $userAlreadyExists = $repository->findOneBy(array("email" => $user->getEmail()));
 
-        if(null !== $existingUserWithEmail && $existingUserWithEmail->getId() != $user->getId())
-            throw new \Exception("User with email {$user->getEmail()} already exists");
+        if(null !== $userAlreadyExists && $userAlreadyExists->getId() != $user->getId()){
+            throw new \Exception($this->getMessageAlreadyExists($user->getEmail(), self::ENTITY_NAME));
+        }
     }
 
     private function validatePassword($psw):bool{
-        if(null !== $psw)
-            return true;
-        else
-            return false;
+        // Se lo deja en una función ya que en un futuro pueden haber más validaciones que hacer en password.
+        // Chequear si es necesario trasladar a GlobalHandler.
+        return null !== $psw;
     }
+
+    private function updateUserUpload(User $user, $file)
+{
+    $uploadId = null !== $user->getUpload() ? $user->getUpload()->getId() : null;
+
+    if ($file) {
+        $upload = $this->uploadHandler->set(
+            [
+                "file" => $file,
+                UploadHandler::ID_PARAM => $uploadId
+            ],
+            UploadHandler::PROFILE_PHOTO_FILE_TYPE
+        );
+        $user->setUpload($upload);
+    }
+}
 }
