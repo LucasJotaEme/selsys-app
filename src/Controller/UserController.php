@@ -44,7 +44,7 @@ class UserController extends GlobalManager
     }
 
     #[Route('/edit', methods: ["POST"])]
-    public function editCreate(UserHandler $handler, UserPasswordHasherInterface $passwordHasher, UserEditRequest $automatizedValidator): JsonResponse
+    public function userEdit(UserHandler $handler, UserPasswordHasherInterface $passwordHasher, UserEditRequest $automatizedValidator): JsonResponse
     {
         try {
             $automatizedValidator->validate();

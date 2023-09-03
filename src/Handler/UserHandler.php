@@ -19,6 +19,21 @@ class UserHandler extends GlobalHandler
         parent::__construct($entityManager);
     }
 
+    private function updateUserUpload(User $user, $file, $byDefault = false)
+    {
+        $uploadId = null !== $user->getUpload() ? $user->getUpload()->getId() : null;
+        $type = UploadHandler::PROFILE_PHOTO_FILE_TYPE;
+
+        $upload = $this->uploadHandler->set(
+            [
+                "file" => $byDefault ? UploadHandler::DEFAULT : $file,
+                UploadHandler::ID_PARAM => $uploadId,
+            ],
+            $type
+        );
+        $user->setUpload($upload);
+    }
+
     public function set($params, UserPasswordHasherInterface $passwordHasher = null, $edit = false)
     {
         $id = $params[self::ID_PARAM] ?? 0;
@@ -77,20 +92,5 @@ class UserHandler extends GlobalHandler
         // Se lo deja en una función ya que en un futuro pueden haber más validaciones que hacer en password.
         // Chequear si es necesario trasladar a GlobalHandler.
         return null !== $psw;
-    }
-
-    private function updateUserUpload(User $user, $file, $byDefault = false)
-    {
-        $uploadId = null !== $user->getUpload() ? $user->getUpload()->getId() : null;
-        $type = UploadHandler::PROFILE_PHOTO_FILE_TYPE;
-
-        $upload = $this->uploadHandler->set(
-            [
-                "file" => $byDefault ? UploadHandler::DEFAULT : $file,
-                UploadHandler::ID_PARAM => $uploadId,
-            ],
-            $type
-        );
-        $user->setUpload($upload);
     }
 }
