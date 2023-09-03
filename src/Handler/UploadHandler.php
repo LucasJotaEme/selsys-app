@@ -34,8 +34,8 @@ class UploadHandler extends GlobalHandler
 
         $upload->setType($type);
         if ($file === self::DEFAULT) {
-            $this->createDefaultFile($route,$type,$hash,$upload);
-        } else {
+            $this->createDefaultFile($route, $type, $hash, $upload);
+        } elseif ($file !== null) {
             $this->cleanFolder($route . "$type/$hash");
             $file->move($route . "$type/$hash\/", $file->getClientOriginalName());
             $upload->setHash($hash);

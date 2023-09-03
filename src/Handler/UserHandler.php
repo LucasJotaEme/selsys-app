@@ -4,6 +4,7 @@ namespace App\Handler;
 
 use App\Common\GlobalHandler;
 use App\Entity\User;
+use App\Entity\UserType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
@@ -13,6 +14,7 @@ class UserHandler extends GlobalHandler
     const ENTITY_NAME = "User";
     const ID_PARAM = "userId";
     const PASSWORD_PARAM = "password";
+    const PARAMS_USER_TYPE_ID = "userTypeId";
 
     public function __construct(protected EntityManagerInterface $entityManager, private UploadHandler $uploadHandler)
     {
@@ -38,6 +40,7 @@ class UserHandler extends GlobalHandler
     {
         $id = $params[self::ID_PARAM] ?? 0;
         $psw = $params[self::PASSWORD_PARAM] ?? null;
+        $userTypeId = $params[self::PARAMS_USER_TYPE_ID] ?? null;
         $file = $params[UploadHandler::FILE_PARAM] ?? null;
         $user = $edit ? $this->ifExistsGetById($id, self::ENTITY_NAME) : new User();
 
@@ -48,7 +51,11 @@ class UserHandler extends GlobalHandler
         if ($this->validatePassword($psw) && null !== $passwordHasher) {
             $user->setPassword($passwordHasher->hashPassword($user, $psw));
         }
-
+        if (null !== $userTypeId && $userType = $this->ifExistsGetById($userTypeId, UserTypeHandler::ENTITY_NAME)) {
+            $user->addUserType($userType);
+            $user->setRoles($this->parseRoles($user->getUserTypes()));
+        }
+        $this->validate($user);
         $this->updateUserUpload($user, $file, !$edit);
 
         return $user;
@@ -92,5 +99,14 @@ class UserHandler extends GlobalHandler
         // Se lo deja en una función ya que en un futuro pueden haber más validaciones que hacer en password.
         // Chequear si es necesario trasladar a GlobalHandler.
         return null !== $psw;
+    }
+
+    private function parseRoles($userTypes)
+    {
+        $roles = array();
+        foreach ($userTypes as $userType) {
+            $roles[] = "ROLE_" . $userType->getName();
+        }
+        return $roles;
     }
 }

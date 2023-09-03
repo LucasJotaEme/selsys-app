@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -32,6 +34,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\ManyToOne(inversedBy: 'users')]
     private ?Upload $upload = null;
+
+    #[ORM\ManyToMany(targetEntity: UserType::class, mappedBy: 'users')]
+    private Collection $userTypes;
+
+    public function __construct()
+    {
+        $this->userTypes = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -66,8 +76,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
-        $roles[] = 'ROLE_USER';
 
         return array_unique($roles);
     }
@@ -75,7 +83,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setRoles(array $roles): self
     {
         $this->roles = $roles;
-
         return $this;
     }
 
@@ -123,6 +130,33 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setUpload(?Upload $upload): self
     {
         $this->upload = $upload;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, UserType>
+     */
+    public function getUserTypes(): Collection
+    {
+        return $this->userTypes;
+    }
+
+    public function addUserType(UserType $userType): self
+    {
+        if (!$this->userTypes->contains($userType)) {
+            $this->userTypes->add($userType);
+            $userType->addUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUserType(UserType $userType): self
+    {
+        if ($this->userTypes->removeElement($userType)) {
+            $userType->removeUser($this);
+        }
 
         return $this;
     }
